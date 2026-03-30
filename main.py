@@ -1,4 +1,4 @@
-"""XIAO ESP32-S3 demo — blinks SOS in Morse code on the built-in LED (GPIO 21).
+"""XIAO ESP32-S3 demo — blinks OK in Morse code on the built-in LED (GPIO 21).
 
 Also prints the pattern to serial so it works headless.
 Uses a one-shot Timer chain so the REPL stays responsive between flashes.
@@ -22,21 +22,17 @@ def _off():
     led.value(1 if ACTIVE_LOW else 0)
 
 
-# SOS sequence: (led_on, duration_ms, serial_char)
+# OK sequence: (led_on, duration_ms, serial_char)
 # Morse timing: dot=1, dash=3, element-gap=1, letter-gap=3, word-gap=7
 _SEQ = [
-    # S: ...
-    (1, DOT_MS,   '.'), (0, DOT_MS, ''),
-    (1, DOT_MS,   '.'), (0, DOT_MS, ''),
-    (1, DOT_MS,   '.'), (0, 3*DOT_MS, ' '),
     # O: ---
     (1, 3*DOT_MS, '-'), (0, DOT_MS, ''),
     (1, 3*DOT_MS, '-'), (0, DOT_MS, ''),
     (1, 3*DOT_MS, '-'), (0, 3*DOT_MS, ' '),
-    # S: ...
+    # K: -.-
+    (1, 3*DOT_MS, '-'), (0, DOT_MS, ''),
     (1, DOT_MS,   '.'), (0, DOT_MS, ''),
-    (1, DOT_MS,   '.'), (0, DOT_MS, ''),
-    (1, DOT_MS,   '.'), (0, 7*DOT_MS, '\n'),  # word gap before repeat
+    (1, 3*DOT_MS, '-'), (0, 7*DOT_MS, '\n'),  # word gap before repeat
 ]
 
 _idx = 0
@@ -54,4 +50,4 @@ def _step(t):
 
 
 _step(None)
-print("SOS started  (... --- ...)")
+print("OK started  (--- -.-)")
