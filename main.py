@@ -1,38 +1,57 @@
-"""XIAO ESP32-S3 demo — cycles RGB colors on the built-in NeoPixel (GPIO 48).
+"""XIAO ESP32-S3 demo — blinks SOS in Morse code on the built-in LED (GPIO 21).
 
-Prints the current color to serial on each tick so it works headless too.
-Uses machine.Timer so the REPL and WebREPL stay responsive.
+Also prints the pattern to serial so it works headless.
+Uses a one-shot Timer chain so the REPL stays responsive between flashes.
+
+If the LED appears inverted (on when it should be off), set ACTIVE_LOW = False.
 """
 from machine import Pin, Timer
-import neopixel
 
-# XIAO ESP32-S3 built-in RGB LED is a single NeoPixel on GPIO 48
-_np = neopixel.NeoPixel(Pin(48), 1)
+LED_PIN = 21
+ACTIVE_LOW = True   # XIAO ESP32-S3 user LED is active-low (LOW = on)
+DOT_MS = 150        # base timing unit in ms
 
-# Colors to cycle through (R, G, B) — kept dim to avoid blinding
-_COLORS = [
-    (32, 0, 0),   # red
-    (0, 32, 0),   # green
-    (0, 0, 32),   # blue
-    (16, 16, 0),  # yellow
-    (0, 16, 16),  # cyan
-    (16, 0, 16),  # magenta
-    (0, 0, 0),    # off
+led = Pin(LED_PIN, Pin.OUT, value=1 if ACTIVE_LOW else 0)  # start off
+
+
+def _on():
+    led.value(0 if ACTIVE_LOW else 1)
+
+
+def _off():
+    led.value(1 if ACTIVE_LOW else 0)
+
+
+# SOS sequence: (led_on, duration_ms, serial_char)
+# Morse timing: dot=1, dash=3, element-gap=1, letter-gap=3, word-gap=7
+_SEQ = [
+    # S: ...
+    (1, DOT_MS,   '.'), (0, DOT_MS, ''),
+    (1, DOT_MS,   '.'), (0, DOT_MS, ''),
+    (1, DOT_MS,   '.'), (0, 3*DOT_MS, ' '),
+    # O: ---
+    (1, 3*DOT_MS, '-'), (0, DOT_MS, ''),
+    (1, 3*DOT_MS, '-'), (0, DOT_MS, ''),
+    (1, 3*DOT_MS, '-'), (0, 3*DOT_MS, ' '),
+    # S: ...
+    (1, DOT_MS,   '.'), (0, DOT_MS, ''),
+    (1, DOT_MS,   '.'), (0, DOT_MS, ''),
+    (1, DOT_MS,   '.'), (0, 7*DOT_MS, '\n'),  # word gap before repeat
 ]
-_NAMES = ["red", "green", "blue", "yellow", "cyan", "magenta", "off"]
+
 _idx = 0
-
-
-def _tick(t):
-    global _idx
-    color = _COLORS[_idx % len(_COLORS)]
-    name = _NAMES[_idx % len(_NAMES)]
-    _np[0] = color
-    _np.write()
-    print(f"LED: {name} {color}")
-    _idx += 1
-
-
 _timer = Timer(0)
-_timer.init(period=750, mode=Timer.PERIODIC, callback=_tick)
-print("XIAO ESP32-S3 LED demo started")
+
+
+def _step(t):
+    global _idx
+    on, duration, ch = _SEQ[_idx % len(_SEQ)]
+    _on() if on else _off()
+    if ch:
+        print(ch, end='' if ch != '\n' else '\n')
+    _idx += 1
+    _timer.init(mode=Timer.ONE_SHOT, period=duration, callback=_step)
+
+
+_step(None)
+print("SOS started  (... --- ...)")
